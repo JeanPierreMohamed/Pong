@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Pong</title>
+		<meta name="author" content="Jean-Pierre MOHAMED & Imed ABDELKAFI">
+		<link href="https://fonts.googleapis.com/css?family=Raleway" rel="stylesheet">
+		<style>
+			html,body{
+				background-color:white;
+				margin: 0 auto;
+				text-align : center;
+				background-image:url("Fond-d-ecran.jpg");
+				background-attachment:fixed;
+				font-family: 'Raleway', sans-serif;
+				height: 100%;
+				width: 100%
+			}
+			input{
+				width:10%;
+			}
+
+			h1 {
+				color: white; 
+				font-family: 'Raleway', sans-serif;
+			}
+
+			h2 {
+				color: white; 
+				font-family: 'Raleway', sans-serif;
+			}
+
+			#score {
+				margin-left: 30%;
+				margin-right: 30%;
+				color: white; 
+				font-family: 'Raleway', sans-serif;
+				background-color: black;
+			}
+			
+			#myCanvas {
+				height: 70%;
+				width: 30%;
+			}
+
+
+		</style>
+	</head>
+	
+	<body>
+		<h1>Pong</h1>
+		
+		<h2>Designed by Ludovic GAYET & Jean-Pierre MOHAMED</h2>
+		
+		<div id="score"> score </div></br>
+
+	
+		<canvas id="myCanvas" style="border:1px solid #000000;"></canvas></br>
+		
+		<input type="button" value="NEW GAME" onClick = "newGame()"><br><br>
+		<strong> IA GREEN: </strong><input type="checkbox" id="IA">
+		<strong> vitesse balle : </strong><input type="text" id="vitesseBalle" value="0.4">
+		
+		<script>
+			//Variables du jeu
+			var DRAWBAR_GAME_WIDTH = 50;
+			var DRAWBAR_GAME_HEIGHT = 3;
+			var PIXEL_MOVE = 1;
+			var GAME_WIDTH = document.getElementById('myCanvas').width;
+			var GAME_HEIGHT = document.getElementById('myCanvas').height;
+			var COLOR_BALL = '#FE2EF7';
+			var SPEED_BALL = document.getElementById('vitesseBalle').value;
+			var DIMENSION_BALL = 2;
+			var SCORE_RED = 0;
+			var SCORE_GREEN = 0;
+			var PARTIE_EN_COURS = false;
+			
+			//Variable de la barre
+			var drawbar1X;
+			var drawbar1Y;
+			var drawbar2X;
+			var drawbar2Y;
+			var context;
+			var ballX = GAME_WIDTH/2;
+			var ballY = GAME_HEIGHT/2;
+			var dirBallX = 1;
+			var dirBallY = -1; 
+
+			//On définie les touches que les joueurs vont appuyer
+			var P1Left = 37;
+			var P1Right = 39;
+			var P2Left = 68;
+			var P2Right = 81;
+			var P1LeftOn = false;
+			var P1RightOn = false;
+			var P2LeftOn = false;
+			var P2RightOn = false;
+			
+			//Cette fonction permet de récupérer tous les informations du jeu
+			window.addEventListener('load', function() {
+				//On récupère l'objet canvas
+				var game = document.getElementById('myCanvas');
+				if (!game || !game.getContext){
+					return;
+				}
+				
+				//On récupère le contexte 2D
+				context = game.getContext("2d");
+				context.globalAlpha=0.2;
+				
+				//Initialisation des variables
+				GAME_WIDTH = game.width;
+				GAME_HEIGHT = game.height;
+				drawbar1X = GAME_WIDTH/2 - DRAWBAR_GAME_WIDTH/2;
+				drawbar1Y = (GAME_HEIGHT - DRAWBAR_GAME_HEIGHT);
+				drawbar2X = GAME_WIDTH/2 - DRAWBAR_GAME_WIDTH/2;
+				drawbar2Y = 0;
+				
+				//Boucle de rafraichissement du contexte 2D
+				//myInterval =setInterval(refreshGame, 10);
+
+				//Affichage du terrain
+				context.globalAlpha=0.2;
+				context.rect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+				context.fillStyle = "rgb(0, 0, 0)";
+				context.fill();
+				
+				//Affichage de la balle
+				context.globalAlpha=1;
+				context.fillStyle = COLOR_BALL;
+				context.beginPath();
+				context.arc(ballX, ballY, DIMENSION_BALL, 0, Math.PI*2, true);
+				context.closePath();
+				context.fill();		
+
+				//Affichage des barres
+				context.globalAlpha=1;
+				context.fillStyle = "rgb(255, 0, 0)";
+				context.fillRect(drawbar1X, drawbar1Y, DRAWBAR_GAME_WIDTH, DRAWBAR_GAME_HEIGHT);
+				context.globalAlpha=1;
+				context.fillStyle = "rgb(0, 255, 0)";
+				context.fillRect(drawbar2X, drawbar2Y, DRAWBAR_GAME_WIDTH, DRAWBAR_GAME_HEIGHT);
+
+				//Initialisation du score
+				displayScore(SCORE_RED, SCORE_GREEN);
+				
+			}, false);
+			
+			function refreshGame() {
+
+				//On efface la zone pour le réécrire
+				clearContexte(context, 0, GAME_WIDTH, 0, GAME_HEIGHT);
+			
+				//Affichage du terrain
+				context.globalAlpha=0.2;
+				context.rect(0, 0, 500, 600);
+				context.fillStyle = "rgb(0, 0, 0)";
+				context.fill();
+				context.moveTo(0, 300);
+				context.lineTo(500, 300);
+				context.strokeStyle = '#FFFFFF';
+				context.stroke();
+				
+				//Affichage des barres
+				context.globalAlpha=1;
+				context.fillStyle = "rgb(255, 0, 0)";
+				context.fillRect(drawbar1X, drawbar1Y, DRAWBAR_GAME_WIDTH, DRAWBAR_GAME_HEIGHT);
+				context.globalAlpha=1;
+				context.fillStyle = "rgb(0, 255, 0)";
+				context.fillRect(drawbar2X, drawbar2Y, DRAWBAR_GAME_WIDTH, DRAWBAR_GAME_HEIGHT);
+				
+				
+				//Calcul de la nouvelle position de la balle
+				if((ballX + dirBallX * SPEED_BALL) > GAME_WIDTH) dirBallX = -1;
+				else if((ballX + dirBallX * SPEED_BALL) < 0) dirBallX = 1;
+				if((ballY + dirBallY * SPEED_BALL) > GAME_HEIGHT){
+					clearInterval(myInterval);
+					SCORE_GREEN += 1;
+					dirBallY = 1;
+					PARTIE_EN_COURS = false;
+					displayScore(SCORE_RED, SCORE_GREEN);
+				}
+				else{
+					if(((ballY + dirBallY * SPEED_BALL) < (0 + DRAWBAR_GAME_HEIGHT)) && ((ballX + dirBallX * SPEED_BALL) >= drawbar2X) && ((ballX + dirBallX * SPEED_BALL) <= (drawbar2X + DRAWBAR_GAME_WIDTH))) {
+						dirBallY = 1;
+						dirBallX = 2*(ballX - (drawbar2X + DRAWBAR_GAME_WIDTH/2))/DRAWBAR_GAME_WIDTH;
+					}
+				}
+				if((ballY + dirBallY * SPEED_BALL) < 0){
+					clearInterval(myInterval);
+					SCORE_RED += 1;
+					dirBallY = -1;
+					PARTIE_EN_COURS = false;
+					displayScore(SCORE_RED, SCORE_GREEN);
+				}
+				else{
+					if(((ballY + dirBallY * SPEED_BALL) > (GAME_HEIGHT - DRAWBAR_GAME_HEIGHT)) && ((ballX + dirBallX * SPEED_BALL) >= drawbar1X) && ((ballX + dirBallX * SPEED_BALL) <= (drawbar1X + DRAWBAR_GAME_WIDTH))) {
+						dirBallY = -1;
+						dirBallX = 2*(ballX - (drawbar1X + DRAWBAR_GAME_WIDTH/2))/DRAWBAR_GAME_WIDTH;
+					}
+				}
+				
+				
+				//Vitesse de la balle
+				ballX += dirBallX * SPEED_BALL;
+				ballY += dirBallY * SPEED_BALL;
+			
+				//Affichage de la balle
+				context.fillStyle = COLOR_BALL;
+				context.beginPath();
+				context.arc(ballX, ballY, DIMENSION_BALL, 0, Math.PI*2, true);
+				context.closePath();
+				context.fill();		
+
+				// IA joue
+				if (document.getElementById("IA").checked==true) {
+					IA();
+					//Gestion des barres 
+					if(P1RightOn) {
+					//Flèche droite pour le joueur 1
+						if((drawbar1X + PIXEL_MOVE + DRAWBAR_GAME_WIDTH) <= GAME_WIDTH) drawbar1X += PIXEL_MOVE;
+					}
+					
+					//Flèche de gauche pour le joueur 1
+					if (P1LeftOn) {
+						if(((drawbar1X - PIXEL_MOVE)) >= 0) drawbar1X -= PIXEL_MOVE;
+					}
+				}
+				else {
+					//Gestion des barres 
+					if(P1RightOn) {
+					//Flèche droite pour le joueur 1
+						if((drawbar1X + PIXEL_MOVE + DRAWBAR_GAME_WIDTH) <= GAME_WIDTH) drawbar1X += PIXEL_MOVE;
+					}
+					
+					//Flèche de gauche pour le joueur 1
+					if (P1LeftOn) {
+						if(((drawbar1X - PIXEL_MOVE)) >= 0) drawbar1X -= PIXEL_MOVE;
+					}
+					
+					//Touche Q pour le joueur 2
+					if (P2LeftOn) {
+						if((drawbar2X + PIXEL_MOVE + DRAWBAR_GAME_WIDTH) <= GAME_WIDTH) drawbar2X += PIXEL_MOVE;
+					}
+					
+					//Touche D pour le joueur 2
+					if (P2RightOn) {
+						if(((drawbar2X - PIXEL_MOVE)) >= 0) drawbar2X -= PIXEL_MOVE;
+					}
+				}
+				
+			}
+			
+			document.addEventListener("keyup", function(e){
+				switch(e.keyCode){
+					case P1Left:
+						P1LeftOn = false;
+						break;
+					case P1Right:
+						P1RightOn = false;
+						break;
+					case P2Left:
+						P2LeftOn = false;
+						break;
+					case P2Right:
+						P2RightOn = false;
+						break;
+				}
+			});
+			
+			document.addEventListener("keydown", function(e){
+				switch(e.keyCode){
+					case P1Left:
+						P1LeftOn = true;
+						P1RightOn = false;
+						break;
+					case P1Right:
+						P1RightOn = true;
+						P1LeftOn = false;
+						break;
+					case P2Left:
+						P2LeftOn = true;
+						P2RightOn = false;
+						break;
+					case P2Right:
+						P2RightOn = true;
+						P2LeftOn = false;
+						break;
+				}
+			});
+
+			function clearContexte(context, startwidth, ctxwidth, startheight, ctxheight) {
+				context.clearRect(startwidth, startheight, ctxwidth, ctxheight);
+			}
+			
+			function displayScore(scoreRed, scoreGreen){
+				document.getElementById("score").innerHTML="<FONT color='yellow' ><b>Score</b></FONT> <FONT color='red'><b>RED</b></FONT> : " +"<FONT color='white'>"+SCORE_RED+"</FONT>"  + "&nbsp" + "&nbsp" + "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+ "&nbsp"+"&nbsp"+ "&nbsp"+ "&nbsp"+ " , <FONT color='yellow' background-color='black'><b>Score</b></FONT> <font COLOR='green'><b>GREEN</b></FONT> : " + "<FONT color='white'>"+SCORE_GREEN+"</FONT>";
+			}
+			
+			function newGame(){
+				if (PARTIE_EN_COURS==false) {
+					SPEED_BALL = document.getElementById('vitesseBalle').value;
+					ballX = GAME_WIDTH/2;
+					ballY = GAME_HEIGHT/2;
+					myInterval = setInterval(refreshGame, 10);
+					drawbar1X = GAME_WIDTH/2 - DRAWBAR_GAME_WIDTH/2;
+					drawbar1Y = (GAME_HEIGHT - DRAWBAR_GAME_HEIGHT);
+					drawbar2X = GAME_WIDTH/2 - DRAWBAR_GAME_WIDTH/2;
+					drawbar2Y = 0;
+					PARTIE_EN_COURS = true;
+				}
+				
+			}
+
+			function IA() {
+				if ((drawbar2X + DRAWBAR_GAME_WIDTH/2) > ballX) {
+					if((drawbar2X - PIXEL_MOVE) >= 0) drawbar2X -= PIXEL_MOVE;
+				}
+				else if ((drawbar2X + DRAWBAR_GAME_WIDTH/2) < ballX) {
+					if((drawbar2X + PIXEL_MOVE + DRAWBAR_GAME_WIDTH) <= GAME_WIDTH) drawbar2X += PIXEL_MOVE;
+				}
+			
+			}
+		</script>
+	
+	</body>
+</html>
